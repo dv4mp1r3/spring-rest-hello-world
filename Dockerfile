@@ -1,31 +1,43 @@
-# Stage 1: Build the native executable using GraalVM
+# Этап 1: Сборка нативного исполняемого файла (остается без изменений)
 FROM ghcr.io/graalvm/native-image-community:21-ol9 as builder
 
-# Install Maven
+# Определяем рабочую директорию
+WORKDIR /app
+
+# Установка Maven
 RUN microdnf install -y maven
 
-WORKDIR /app
-
-# Copy pom.xml and download dependencies
+# Копирование pom.xml
 COPY pom.xml ./
+
+# Загружаем зависимости
 RUN mvn dependency:go-offline
 
-# Copy the rest of the source code
+# Копирование остального исходного кода
 COPY src ./src
 
-# Build the native executable
+# Сборка нативного исполняемого файла
 RUN mvn -Pnative -DskipTests native:compile
 
-# Stage 2: Create the final, minimal image
-FROM gcr.io/distroless/java21-debian12
 
+# Этап 2: Новый этап для извлечения библиотеки
+FROM debian:12-slim as library_stage
+
+
+# Этап 3: Создание финального образа
+FROM gcr.io/distroless/cc-debian12
+
+# Определяем рабочую директорию
 WORKDIR /app
 
-# Copy the native executable from the builder stage
+# Копируем недостающую библиотеку libz.so.1 из образа Debian
+COPY --from=library_stage /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/
+
+# Копируем наш исполняемый файл из этапа сборки
 COPY --from=builder /app/target/hw .
 
-# Expose the application port
+# Открываем порт приложения
 EXPOSE 8080
 
-# Run the application
+# Запускаем приложение
 ENTRYPOINT ["./hw"]
