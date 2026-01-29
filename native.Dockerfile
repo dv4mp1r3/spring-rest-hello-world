@@ -21,9 +21,7 @@ LABEL org.opencontainers.image.authors="Ivan Medaev" \
 
 WORKDIR /app
 
-# libz.so.1 требуется для GraalVM native image (zlib compression)
 COPY --from=debian:13-slim /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/
-
 COPY --from=builder /app/target/hw .
 
 USER nonroot
